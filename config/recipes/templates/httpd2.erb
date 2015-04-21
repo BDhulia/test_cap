@@ -1,0 +1,38 @@
+<VirtualHost *:80>
+  ServerName <%= domain %>
+  <% if php_env == "production" %><%= "ServerAlias #{domain_alias}" %>
+  RewriteEngine On
+  <% dom_aliases = fetch(:domain_alias).split(" ") %>
+  <% dom_aliases.each do |dom_alias| %>
+  RewriteCond %{HTTP_HOST} ^<%= dom_alias.gsub('.', '\\.') %>$ <%= "[OR]" if dom_alias != dom_aliases.last %>
+  <% end %>
+  RewriteRule ^(.*)$ http://<%= domain %>$1 [R=301,L]
+  <% end %>
+  DocumentRoot <%= current_path %>/public
+  ErrorLog <%= shared_path %>/log/error.log
+  CustomLog <%= shared_path %>/log/access.log combined
+  
+  DirectoryIndex index.php index.html
+  
+  <Directory "<%= current_path %>/public">
+    Options +FollowSymlinks +MultiViews
+    <% if php_env == "uat" %>
+    AuthType Basic
+    AuthName "Restricted Access"
+    AuthUserFile <%= shared_path %>/htpasswd/.htpasswd
+    Require valid-user
+    <% end %>
+    <IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    RewriteRule ^index\.php$ - [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . /index.php [L]
+    </IfModule>
+
+    AllowOverride all
+    Order allow,deny
+    Allow from all
+  </Directory>
+</VirtualHost>
